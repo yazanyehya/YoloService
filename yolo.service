@@ -1,0 +1,13 @@
+[Unit]
+Description=YOLO AI Detection Service
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/YoloService
+ExecStart=/home/ubuntu/YoloService/start-yolo.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
