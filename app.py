@@ -6,8 +6,7 @@ import sqlite3
 import os
 import uuid
 import shutil
-
-# Disable GPU usage
+import boto3
 import torch
 torch.cuda.is_available = lambda: False
 
@@ -22,6 +21,15 @@ os.makedirs(PREDICTED_DIR, exist_ok=True)
 
 # Download the AI model (tiny model ~6MB)
 model = YOLO("yolov8n.pt")  
+
+s3 = boto3.client("s3")
+S3_BUCKET = "yazan-polybot-images"
+def upload_to_s3(local_path: str, s3_key: str):
+    try:
+        s3.upload_file(local_path, S3_BUCKET, s3_key)
+        print(f"✅ Uploaded to S3: {s3_key}")
+    except Exception as e:
+        print(f"❌ Failed to upload {s3_key} to S3: {e}")
 
 # Initialize SQLite
 def init_db():
@@ -93,6 +101,8 @@ def predict(file: UploadFile = File(...)):
     annotated_frame = results[0].plot()  # NumPy image with boxes
     annotated_image = Image.fromarray(annotated_frame)
     annotated_image.save(predicted_path)
+    upload_to_s3(original_path, f"original/{uid}{ext}")
+    upload_to_s3(predicted_path, f"predicted/{uid}{ext}")
 
     save_prediction_session(uid, original_path, predicted_path)
     
