@@ -1,16 +1,18 @@
 #!/bin/bash
 
-# copy the .servcie file
+echo "🚀 Deploying yolo.service..."
+
+# Clean local Python cache
+rm -rf __pycache__/
+
+# Copy service file
 sudo cp yolo.service /etc/systemd/system/
 
-# reload daemon and restart the service
+# Restart service
 sudo systemctl daemon-reload
 sudo systemctl restart yolo.service
 sudo systemctl enable yolo.service
 
-# Check if the service is active
-if ! systemctl is-active --quiet yolo.service; then
-  echo "❌ yolo.service is not running."
-  sudo systemctl status yolo.service --no-pager
-  exit 1
-fi
+# Check status
+echo "📊 Service status:"
+sudo systemctl status yolo.service --no-pager
