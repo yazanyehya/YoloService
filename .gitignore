@@ -9,5 +9,8 @@
 
 *.db
 *.pt
+# Ignore Python bytecode
+__pycache__/
+*.pyc
 
 uploads/
