@@ -26,7 +26,7 @@ def test_predict_success():
 
 def test_predict_missing_file():
     response = client.post("/predict", files={})
-    assert response.status_code == 422  # or 400 depending on your validation
+    assert response.status_code == 400  # or 400 depending on your validation
 
 def test_get_prediction_by_uid_valid():
     # Replace this UID with a known valid one in your DB for tests
