@@ -30,15 +30,17 @@ jobs:
         run: |
           ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_DEV }} "echo ✅ Connected to DEV!"
 
-      - name: Clean PyCache and Pull Code on EC2
+      - name: Clean PyCache and Pull Dev Branch on EC2
         run: |
           ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_DEV }} << EOF
             if [ -d ~/${REPO_NAME} ]; then
               cd ~/${REPO_NAME}
               rm -rf __pycache__
-              git pull
+              git fetch origin
+              git checkout dev
+              git pull origin dev
             else
-              git clone ${REPO_URL} ~/${REPO_NAME}
+              git clone -b dev ${REPO_URL} ~/${REPO_NAME}
             fi
           EOF
 
