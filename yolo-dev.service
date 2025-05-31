@@ -5,7 +5,7 @@ After=network.target
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/YoloService-dev
-ExecStart=/home/ubuntu/YoloService-dev/start-yolo.sh
+ExecStart=/home/ubuntu/YoloService/start-yolo.sh
 Restart=always
 RestartSec=5
 
