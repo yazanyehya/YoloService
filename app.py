@@ -23,7 +23,7 @@ os.makedirs(PREDICTED_DIR, exist_ok=True)
 model = YOLO("yolov8n.pt")  
 
 s3 = boto3.client("s3")
-S3_BUCKET = "yazan-polybot-images"
+S3_BUCKET = "yazan-dev-images-polybot"
 def upload_to_s3(local_path: str, s3_key: str):
     try:
         s3.upload_file(local_path, S3_BUCKET, s3_key)
@@ -83,29 +83,54 @@ def save_detection_object(prediction_uid, label, score, box):
             VALUES (?, ?, ?, ?)
         """, (prediction_uid, label, score, str(box)))
 
+from pydantic import BaseModel
+from typing import Optional
+
+class PredictRequest(BaseModel):
+    image_key: Optional[str] = None
+
 @app.post("/predict")
-def predict(file: UploadFile = File(...)):
-    """
-    Predict objects in an image
-    """
-    ext = os.path.splitext(file.filename)[1]
+async def predict(
+    request: Request,
+    file: UploadFile = File(None)  # optional
+):
+    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+
+    image_key = body.get("image_key")
+    ext = ".jpg"  # fallback extension
     uid = str(uuid.uuid4())
     original_path = os.path.join(UPLOAD_DIR, uid + ext)
     predicted_path = os.path.join(PREDICTED_DIR, uid + ext)
 
-    with open(original_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    if image_key:
+        # S3 path provided: download from S3
+        try:
+            s3.download_file(S3_BUCKET, image_key, original_path)
+            print(f"✅ Downloaded {image_key} from S3")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to download image from S3: {e}")
+    elif file:
+        # File was uploaded
+        ext = os.path.splitext(file.filename)[1]
+        original_path = os.path.join(UPLOAD_DIR, uid + ext)
+        with open(original_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+    else:
+        raise HTTPException(status_code=400, detail="No image_key or file provided")
 
+    # 🔍 Run prediction
     results = model(original_path, device="cpu")
 
-    annotated_frame = results[0].plot()  # NumPy image with boxes
+    annotated_frame = results[0].plot()
     annotated_image = Image.fromarray(annotated_frame)
     annotated_image.save(predicted_path)
-    upload_to_s3(original_path, f"original/{uid}{ext}")
-    upload_to_s3(predicted_path, f"predicted/{uid}{ext}")
+
+    # Upload predicted image to S3 under predicted/...
+    predicted_s3_key = image_key.replace("original", "predicted") if image_key else f"predicted/{uid}{ext}"
+    upload_to_s3(predicted_path, predicted_s3_key)
 
     save_prediction_session(uid, original_path, predicted_path)
-    
+
     detected_labels = []
     for box in results[0].boxes:
         label_idx = int(box.cls[0].item())
@@ -116,7 +141,7 @@ def predict(file: UploadFile = File(...)):
         detected_labels.append(label)
 
     return {
-        "prediction_uid": uid, 
+        "prediction_uid": uid,
         "detection_count": len(results[0].boxes),
         "labels": detected_labels
     }
