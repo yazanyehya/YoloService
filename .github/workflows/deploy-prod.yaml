@@ -1,0 +1,48 @@
+name: Yolo Prod Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+  REPO_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key
+          chmod 600 ~/.ssh/private_key
+
+      - name: Test SSH connection
+        run: |
+          ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_PROD }} "echo ✅ Connected to PROD!"
+
+      - name: Clean PyCache and Pull Code on EC2
+        run: |
+          ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_PROD }} << EOF
+            if [ -d ~/${REPO_NAME} ]; then
+              cd ~/${REPO_NAME}
+              rm -rf __pycache__
+              git pull
+            else
+              git clone ${REPO_URL} ~/${REPO_NAME}
+            fi
+          EOF
+
+      - name: Run Prod Deploy Script
+        run: |
+          ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_PROD }} \
+          "cd ~/${REPO_NAME} && bash deploy-prod.sh"

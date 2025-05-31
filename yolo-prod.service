@@ -1,5 +1,5 @@
 [Unit]
-Description=YOLO AI Detection Service
+Description=YOLO AI Detection Service (Prod)
 After=network.target
 
 [Service]
