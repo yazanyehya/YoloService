@@ -83,51 +83,50 @@ def save_detection_object(prediction_uid, label, score, box):
             VALUES (?, ?, ?, ?)
         """, (prediction_uid, label, score, str(box)))
 
+
 from pydantic import BaseModel
-from typing import Optional
+from fastapi import Body
+
 
 class PredictRequest(BaseModel):
-    image_key: Optional[str] = None
+    image_key: str = None
+
 
 @app.post("/predict")
-async def predict(
-    request: Request,
-    file: UploadFile = File(None)  # optional
-):
-    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
-
-    image_key = body.get("image_key")
-    ext = ".jpg"  # fallback extension
+async def predict(request: Request, file: UploadFile = File(None), body: PredictRequest = Body(None)):
+    """
+    Predict objects in an image.
+    Supports either file upload OR image_key from S3.
+    """
+    ext = ".jpg"
     uid = str(uuid.uuid4())
     original_path = os.path.join(UPLOAD_DIR, uid + ext)
     predicted_path = os.path.join(PREDICTED_DIR, uid + ext)
 
-    if image_key:
-        # S3 path provided: download from S3
+    # Case 1: Use image_key to download from S3
+    if body and body.image_key:
         try:
-            s3.download_file(S3_BUCKET, image_key, original_path)
-            print(f"✅ Downloaded {image_key} from S3")
+            s3.download_file(S3_BUCKET, body.image_key, original_path)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to download image from S3: {e}")
+    # Case 2: Use uploaded file
     elif file:
-        # File was uploaded
         ext = os.path.splitext(file.filename)[1]
         original_path = os.path.join(UPLOAD_DIR, uid + ext)
         with open(original_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
     else:
-        raise HTTPException(status_code=400, detail="No image_key or file provided")
+        raise HTTPException(status_code=400, detail="Either image_key or file must be provided.")
 
-    # 🔍 Run prediction
     results = model(original_path, device="cpu")
 
     annotated_frame = results[0].plot()
     annotated_image = Image.fromarray(annotated_frame)
     annotated_image.save(predicted_path)
 
-    # Upload predicted image to S3 under predicted/...
-    predicted_s3_key = image_key.replace("original", "predicted") if image_key else f"predicted/{uid}{ext}"
-    upload_to_s3(predicted_path, predicted_s3_key)
+    # Upload result
+    upload_to_s3(original_path, f"original/{uid}{ext}")
+    upload_to_s3(predicted_path, f"predicted/{uid}{ext}")
 
     save_prediction_session(uid, original_path, predicted_path)
 
@@ -145,6 +144,7 @@ async def predict(
         "detection_count": len(results[0].boxes),
         "labels": detected_labels
     }
+
 
 @app.get("/prediction/{uid}")
 def get_prediction_by_uid(uid: str):
