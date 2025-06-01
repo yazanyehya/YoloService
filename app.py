@@ -101,6 +101,8 @@ async def predict(request: Request, file: UploadFile = File(None)):
     Predict objects in an image.
     Supports either file upload OR image_key from S3.
     """
+    logger.info(f"Request body: {body}")
+
     ext = ".jpg"
     uid = str(uuid.uuid4())
     original_path = os.path.join(UPLOAD_DIR, uid + ext)
