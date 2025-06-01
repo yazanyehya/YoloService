@@ -84,16 +84,19 @@ def save_detection_object(prediction_uid, label, score, box):
         """, (prediction_uid, label, score, str(box)))
 
 
+from fastapi import Request, UploadFile, File, HTTPException
 from pydantic import BaseModel
-from fastapi import Body
-
+from typing import Optional
+import os
+import uuid
+import shutil
+from PIL import Image
 
 class PredictRequest(BaseModel):
-    image_key: str = None
-
+    image_key: Optional[str] = None
 
 @app.post("/predict")
-async def predict(request: Request, file: UploadFile = File(None), body: PredictRequest = Body(None)):
+async def predict(request: Request, file: UploadFile = File(None)):
     """
     Predict objects in an image.
     Supports either file upload OR image_key from S3.
@@ -103,21 +106,33 @@ async def predict(request: Request, file: UploadFile = File(None), body: Predict
     original_path = os.path.join(UPLOAD_DIR, uid + ext)
     predicted_path = os.path.join(PREDICTED_DIR, uid + ext)
 
+    # Try to parse image_key from JSON body
+    body = None
+    try:
+        body = await request.json()
+    except:
+        pass
+
+    image_key = body.get("image_key") if body else None
+
     # Case 1: Use image_key to download from S3
-    if body and body.image_key:
+    if image_key:
         try:
-            s3.download_file(S3_BUCKET, body.image_key, original_path)
+            s3.download_file(S3_BUCKET, image_key, original_path)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to download image from S3: {e}")
+
     # Case 2: Use uploaded file
     elif file:
         ext = os.path.splitext(file.filename)[1]
         original_path = os.path.join(UPLOAD_DIR, uid + ext)
         with open(original_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
+
     else:
         raise HTTPException(status_code=400, detail="Either image_key or file must be provided.")
 
+    # Inference
     results = model(original_path, device="cpu")
 
     annotated_frame = results[0].plot()
