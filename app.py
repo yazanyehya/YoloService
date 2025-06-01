@@ -26,7 +26,7 @@ s3 = boto3.client("s3")
 S3_BUCKET = "yazan-dev-images-polybot"
 def upload_to_s3(local_path: str, s3_key: str):
     try:
-        s3.upload_file(local_path, S3_BUCKET, s3_key)
+        s3_client.upload_file(local_path, S3_BUCKET, s3_key)
         print(f"✅ Uploaded to S3: {s3_key}")
     except Exception as e:
         print(f"❌ Failed to upload {s3_key} to S3: {e}")
@@ -101,7 +101,6 @@ async def predict(request: Request, file: UploadFile = File(None)):
     Predict objects in an image.
     Supports either file upload OR image_key from S3.
     """
-    logger.info(f"Request body: {body}")
 
     ext = ".jpg"
     uid = str(uuid.uuid4())
