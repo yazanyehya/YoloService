@@ -16,7 +16,7 @@ UPLOAD_DIR = "uploads/original"
 PREDICTED_DIR = "uploads/predicted"
 
 DB_PATH = "predictions.db"
-s3_client = boto3.client("s3", "us-west-1")
+s3_client = boto3.client("s3", "eu-central-1")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(PREDICTED_DIR, exist_ok=True)
@@ -142,7 +142,7 @@ async def predict(request: Request, file: UploadFile = File(None)):
     annotated_image.save(predicted_path)
 
     # Upload result
-    upload_to_s3(original_path, f"original/{uid}{ext}")
+    # upload_to_s3(original_path, f"original/{uid}{ext}")
     upload_to_s3(predicted_path, f"predicted/{uid}{ext}")
 
     save_prediction_session(uid, original_path, predicted_path)
