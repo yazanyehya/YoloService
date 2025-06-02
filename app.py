@@ -14,6 +14,7 @@ app = FastAPI()
 
 UPLOAD_DIR = "uploads/original"
 PREDICTED_DIR = "uploads/predicted"
+
 DB_PATH = "predictions.db"
 s3_client = boto3.client("s3", "us-west-1")
 
@@ -23,7 +24,6 @@ os.makedirs(PREDICTED_DIR, exist_ok=True)
 # Download the AI model (tiny model ~6MB)
 model = YOLO("yolov8n.pt")  
 
-s3 = boto3.client("s3")
 S3_BUCKET = "yazan-dev-images-polybot"
 def upload_to_s3(local_path: str, s3_key: str):
     try:
