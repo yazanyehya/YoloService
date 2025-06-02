@@ -120,7 +120,7 @@ async def predict(request: Request, file: UploadFile = File(None)):
     # Case 1: Use image_key to download from S3
     if image_key:
         try:
-            s3.download_file(S3_BUCKET, image_key, original_path)
+            s3_client.download_file(S3_BUCKET, image_key, original_path)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to download image from S3: {e}")
 
