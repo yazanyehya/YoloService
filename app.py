@@ -14,7 +14,9 @@ app = FastAPI()
 
 UPLOAD_DIR = "uploads/original"
 PREDICTED_DIR = "uploads/predicted"
+
 DB_PATH = "predictions.db"
+s3_client = boto3.client("s3", "eu-central-1")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(PREDICTED_DIR, exist_ok=True)
@@ -22,11 +24,10 @@ os.makedirs(PREDICTED_DIR, exist_ok=True)
 # Download the AI model (tiny model ~6MB)
 model = YOLO("yolov8n.pt")  
 
-s3 = boto3.client("s3")
-S3_BUCKET = "yazan-polybot-images"
+S3_BUCKET = "yazan-dev-images-polybot"
 def upload_to_s3(local_path: str, s3_key: str):
     try:
-        s3.upload_file(local_path, S3_BUCKET, s3_key)
+        s3_client.upload_file(local_path, S3_BUCKET, s3_key)
         print(f"✅ Uploaded to S3: {s3_key}")
     except Exception as e:
         print(f"❌ Failed to upload {s3_key} to S3: {e}")
@@ -83,29 +84,69 @@ def save_detection_object(prediction_uid, label, score, box):
             VALUES (?, ?, ?, ?)
         """, (prediction_uid, label, score, str(box)))
 
+
+from fastapi import Request, UploadFile, File, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+import os
+import uuid
+import shutil
+from PIL import Image
+
+class PredictRequest(BaseModel):
+    image_key: Optional[str] = None
+
 @app.post("/predict")
-def predict(file: UploadFile = File(...)):
+async def predict(request: Request, file: UploadFile = File(None)):
     """
-    Predict objects in an image
+    Predict objects in an image.
+    Supports either file upload OR image_key from S3.
     """
-    ext = os.path.splitext(file.filename)[1]
+
+    ext = ".jpg"
     uid = str(uuid.uuid4())
     original_path = os.path.join(UPLOAD_DIR, uid + ext)
     predicted_path = os.path.join(PREDICTED_DIR, uid + ext)
 
-    with open(original_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    # Try to parse image_key from JSON body
+    body = None
+    try:
+        body = await request.json()
+    except:
+        pass
 
+    image_key = body.get("image_key") if body else None
+
+    # Case 1: Use image_key to download from S3
+    if image_key:
+        try:
+            s3_client.download_file(S3_BUCKET, image_key, original_path)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to download image from S3: {e}")
+
+    # Case 2: Use uploaded file
+    elif file:
+        ext = os.path.splitext(file.filename)[1]
+        original_path = os.path.join(UPLOAD_DIR, uid + ext)
+        with open(original_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+    else:
+        raise HTTPException(status_code=400, detail="Either image_key or file must be provided.")
+
+    # Inference
     results = model(original_path, device="cpu")
 
-    annotated_frame = results[0].plot()  # NumPy image with boxes
+    annotated_frame = results[0].plot()
     annotated_image = Image.fromarray(annotated_frame)
     annotated_image.save(predicted_path)
-    upload_to_s3(original_path, f"original/{uid}{ext}")
+
+    # Upload result
+    # upload_to_s3(original_path, f"original/{uid}{ext}")
     upload_to_s3(predicted_path, f"predicted/{uid}{ext}")
 
     save_prediction_session(uid, original_path, predicted_path)
-    
+
     detected_labels = []
     for box in results[0].boxes:
         label_idx = int(box.cls[0].item())
@@ -116,10 +157,11 @@ def predict(file: UploadFile = File(...)):
         detected_labels.append(label)
 
     return {
-        "prediction_uid": uid, 
+        "prediction_uid": uid,
         "detection_count": len(results[0].boxes),
         "labels": detected_labels
     }
+
 
 @app.get("/prediction/{uid}")
 def get_prediction_by_uid(uid: str):
