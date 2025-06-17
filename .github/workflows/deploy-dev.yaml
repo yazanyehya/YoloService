@@ -1,10 +1,27 @@
-name: Yolo Dev Deploy
+name: Yolo Deploy Dev
 
 on:
-  push:
-    branches:
-      - dev
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+    secrets:
+      SSH_PRIVATE_KEY:
+        required: true
+      EC2_HOST_DEV:
+        required: true
+      EC2_USERNAME:
+        required: true
+      AWS_S3_BUCKET_DEV:
+        required: true
+
   workflow_dispatch:
+    inputs:
+      image:
+        description: "Image tag to deploy"
+        required: true
+        type: string
 
 env:
   REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
@@ -21,30 +38,47 @@ jobs:
       - name: Configure SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          EC2_HOST_DEV: ${{ secrets.EC2_HOST_DEV }}
+          EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+          AWS_S3_BUCKET_DEV: ${{secrets.AWS_S3_BUCKET_DEV}}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key
           chmod 600 ~/.ssh/private_key
 
-      - name: Test SSH connection
-        run: |
-          ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_DEV }} "echo ✅ Connected to DEV!"
-
-      - name: Clean PyCache and Pull Dev Branch on EC2
-        run: |
-          ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_DEV }} << EOF
-            if [ -d ~/${REPO_NAME} ]; then
-              cd ~/${REPO_NAME}
-              rm -rf __pycache__
-              git fetch origin
-              git checkout dev
-              git pull origin dev
-            else
-              git clone -b dev ${REPO_URL} ~/${REPO_NAME}
-            fi
+          cat > ~/.ssh/config << EOF
+          Host ec2
+            HostName EC2_HOST_DEV
+            User $EC2_USERNAME
+            IdentityFile ~/.ssh/private_key
+            StrictHostKeyChecking no
           EOF
 
-      - name: Run Dev Deploy Script
+      - name: Execute script on EC2
         run: |
-          ssh -i ~/.ssh/private_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST_DEV }} \
-          "cd ~/${REPO_NAME} && bash deploy-dev.sh"
+          echo "✅ Deploying image: ${{ inputs.image }}"
+          echo "IMG_NAME=yazanyehya/${{ inputs.image }}" > .env.dev
+          echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET_DEV }}" >> .env.dev
+          echo "TYPE_ENV=dev" >> .env.dev
+
+          # Send files to EC2
+          scp .env.dev docker-compose-dev.yaml otelcol-config.yaml ec2:~/
+
+          # SSH into EC2 and deploy
+          ssh ec2 << 'EOF'
+            sudo apt-get update
+            if ! command -v docker &> /dev/null; then
+              echo "Installing Docker..."
+              sudo apt-get install -y ca-certificates curl
+              sudo install -m 0755 -d /etc/apt/keyrings
+              sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+              sudo chmod a+r /etc/apt/keyrings/docker.asc
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo ${UBUNTU_CODENAME:-$VERSION_CODENAME}) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get update
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            fi
+
+            echo "✅ Starting Docker Compose services..."
+            sudo docker compose --env-file .env.dev -f docker-compose-dev.yaml pull
+            sudo docker compose --env-file .env.dev -f docker-compose-dev.yaml up -d
+          EOF
