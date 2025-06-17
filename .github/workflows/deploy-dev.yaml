@@ -48,7 +48,7 @@ jobs:
 
           cat > ~/.ssh/config << EOF
           Host ec2
-            HostName EC2_HOST_DEV
+            HostName $EC2_HOST_DEV
             User $EC2_USERNAME
             IdentityFile ~/.ssh/private_key
             StrictHostKeyChecking no
