@@ -24,7 +24,7 @@ class DynamoDBStorage(PredictionStorage):
 
     def save_detection(self, uid, label, score, bbox):
         self.objects_table.put_item(Item={
-            "uid": uid,
+            "id": uid,
             "label": label,
             "score": Decimal(str(score)),
             "bbox": bbox
