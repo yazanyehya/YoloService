@@ -10,7 +10,7 @@ from typing import Optional
 
 from ultralytics import YOLO
 from storage.sqlite_storage import SQLiteStorage
-# from storage.dynamodb_storage import DynamoDBStorage (to be implemented)
+from storage.dynamodb_storage import DynamoDBStorage
 
 import boto3
 import torch
@@ -28,7 +28,7 @@ os.makedirs(PREDICTED_DIR, exist_ok=True)
 model = YOLO("yolov8n.pt")
 
 # --- S3 Setup ---
-AWS_REGION = os.getenv("AWS_REGION", "eu-central-1")
+AWS_REGION = os.getenv("AWS_REGION", "us-west-1")
 S3_BUCKET = os.getenv("AWS_S3_BUCKET", "yazan-dev-images-polybot")
 s3_client = boto3.client("s3", region_name=AWS_REGION)
 
