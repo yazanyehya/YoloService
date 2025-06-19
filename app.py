@@ -42,9 +42,10 @@ def upload_to_s3(local_path: str, s3_key: str):
 storage_type = os.getenv("STORAGE_TYPE", "sqlite")
 
 if storage_type == "dynamodb":
-    raise NotImplementedError("DynamoDBStorage not implemented yet.")
+    storage = DynamoDBStorage()
 else:
     storage = SQLiteStorage()
+
 
 # --- Request Model ---
 class PredictRequest(BaseModel):
