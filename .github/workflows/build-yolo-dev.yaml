@@ -1,0 +1,36 @@
+name: Yolo Build Dev
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.build-image-docker.outputs.image }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        id: build-image-docker
+        run: |
+          docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
+
+          IMAGE_TAG="yolo-dev:${{ github.run_number }}"
+          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+          docker build --push -t yazanyehya/$IMAGE_TAG .
+
+  Deploy:
+    needs: Build
+    uses: ./.github/workflows/deploy-dev.yaml
+    with:
+      image: ${{ needs.Build.outputs.image }}
+    secrets:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      EC2_HOST_DEV: ${{ secrets.EC2_HOST_DEV }}
+      EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
+      AWS_S3_BUCKET_DEV: ${{ secrets.AWS_S3_BUCKET_DEV }}
