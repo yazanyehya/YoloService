@@ -4,6 +4,8 @@ from typing import List, Dict, Optional
 from datetime import datetime
 from boto3.dynamodb.conditions import Key
 from storage.base import PredictionStorage
+from decimal import Decimal
+
 
 
 class DynamoDBStorage(PredictionStorage):
@@ -20,13 +22,12 @@ class DynamoDBStorage(PredictionStorage):
             "predicted_image": predicted_image
         })
 
-    def save_detection(self, prediction_uid: str, label: str, score: float, box: str) -> None:
+    def save_detection(self, uid, label, score, bbox):
         self.objects_table.put_item(Item={
-            "id": str(uuid.uuid4()),
-            "prediction_uid": prediction_uid,
+            "uid": uid,
             "label": label,
-            "score": score,
-            "box": box
+            "score": Decimal(str(score)),
+            "bbox": bbox
         })
 
     def get_prediction(self, uid: str) -> Optional[Dict]:
