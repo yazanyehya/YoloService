@@ -17,6 +17,8 @@ on:
         required: true
       STORAGE_TYPE:
         required: true
+      SQS_QUEUE_URL:
+        required: true
 
   workflow_dispatch:
     inputs:
@@ -44,6 +46,8 @@ jobs:
           EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
           AWS_S3_BUCKET_DEV: ${{secrets.AWS_S3_BUCKET_DEV}}
           STORAGE_TYPE: ${{secrets.STORAGE_TYPE}}
+          SQS_QUEUE_URL: ${{secrets.SQS_QUEUE_URL}
+
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/private_key
@@ -63,6 +67,7 @@ jobs:
           echo "IMG_NAME=yazanyehya/${{ inputs.image }}" > .env.dev
           echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET_DEV }}" >> .env.dev
           echo "STORAGE_TYPE=${{ secrets.STORAGE_TYPE }}" >> .env.dev
+          echo "SQS_QUEUE_URL=${{ secrets.SQS_QUEUE_URL }}" >> .env.dev
           echo "TYPE_ENV=dev" >> .env.dev
 
           # Send files to EC2
