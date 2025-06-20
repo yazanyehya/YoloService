@@ -46,7 +46,7 @@ jobs:
           EC2_USERNAME: ${{ secrets.EC2_USERNAME }}
           AWS_S3_BUCKET_DEV: ${{secrets.AWS_S3_BUCKET_DEV}}
           STORAGE_TYPE: ${{secrets.STORAGE_TYPE}}
-          SQS_QUEUE_URL: ${{secrets.SQS_QUEUE_URL}
+          SQS_QUEUE_URL: ${{secrets.SQS_QUEUE_URL}}
 
         run: |
           mkdir -p ~/.ssh
