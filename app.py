@@ -101,11 +101,12 @@ async def predict(request: Request, file: UploadFile = File(None)):
         storage.save_detection(uid, label, score, str(bbox))
         detected_labels.append(label)
 
+    label_counts = dict(Counter(detected_labels))
+
     return {
         "prediction_uid": uid,
-        "detection_count": len(results[0].boxes),
-        "labels": detected_labels,
-        "detections": detections
+        "label_counts": label_counts
+    }
 
     }
 
