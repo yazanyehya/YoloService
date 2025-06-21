@@ -59,35 +59,39 @@ class PredictRequest(BaseModel):
 # --- Routes ---
 @app.post("/predict")
 async def predict(request: Request, file: UploadFile = File(None)):
-    ext = ".jpg"
     uid = str(uuid.uuid4())
+    ext = ".jpg"
     original_path = os.path.join(UPLOAD_DIR, uid + ext)
     predicted_path = os.path.join(PREDICTED_DIR, uid + ext)
 
-    body = None
     try:
         body = await request.json()
     except:
-        pass
+        body = None
 
     image_key = body.get("image_key") if body else None
+    print(f"📥 Incoming prediction request | uid={uid}, image_key={image_key}, file={file.filename if file else 'None'}")
 
+    # Download or save file
     if image_key:
-        try:
-            s3_client.download_file(S3_BUCKET, image_key, original_path)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to download from S3: {e}")
+        print(f"📡 Downloading from S3: {image_key}")
+        s3_client.download_file(S3_BUCKET, image_key, original_path)
     elif file:
         ext = os.path.splitext(file.filename)[1]
         original_path = os.path.join(UPLOAD_DIR, uid + ext)
+        print(f"📁 Saving uploaded file: {file.filename}")
         with open(original_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
     else:
         raise HTTPException(status_code=400, detail="Provide either file or image_key.")
 
+    print("🔍 Running YOLO inference...")
     results = model(original_path, device="cpu")
+    print(f"✅ Detection complete: {results}")
+
     annotated = Image.fromarray(results[0].plot())
     annotated.save(predicted_path)
+    print(f"🖼️ Annotated image saved at {predicted_path}")
 
     upload_to_s3(predicted_path, f"predicted/{uid}{ext}")
     storage.save_prediction(uid, original_path, predicted_path)
@@ -98,19 +102,19 @@ async def predict(request: Request, file: UploadFile = File(None)):
         label = model.names[label_idx]
         score = float(box.conf[0])
         bbox = box.xyxy[0].tolist()
+        print(f"🔹 Detected: {label} ({score}) at {bbox}")
         storage.save_detection(uid, label, score, str(bbox))
         detected_labels.append(label)
 
     label_counts = dict(Counter(detected_labels))
+    print(f"📊 Label counts: {label_counts}")
 
     return {
         "prediction_uid": uid,
-        "label_counts": {
-    "bus": 2,
-    "person": 6,
-
-  }
+        "label_counts": label_counts
     }
+
+
 
 
 
@@ -129,8 +133,6 @@ def get_prediction(uid: str):
         "prediction_uid": uid,
         "label_counts": label_counts,
     }
-
-
 
 @app.get("/predictions/label/{label}")
 def get_by_label(label: str):
