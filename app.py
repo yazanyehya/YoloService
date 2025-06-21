@@ -193,6 +193,7 @@ def process_sqs_message(body):
     except Exception as e:
         print(f"❌ Failed to download from S3: {e}")
         return
+    print("🖼️ Annotated image saved and uploaded")
 
     results = model(local_path, device="cpu")
     print("🖼️ Annotated image saved and uploaded")
