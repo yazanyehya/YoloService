@@ -15,6 +15,7 @@ class DynamoDBStorage(PredictionStorage):
         self.objects_table = self.dynamodb.Table("yazan-dev-detection_objects")
 
     def save_prediction(self, uid: str, original_image: str, predicted_image: str) -> None:
+        print(f"📤 Saving prediction uid={uid}")
         response = self.sessions_table.put_item(Item={
             "uid": uid,
             "timestamp": datetime.utcnow().isoformat(),
