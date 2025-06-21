@@ -15,12 +15,14 @@ class DynamoDBStorage(PredictionStorage):
         self.objects_table = self.dynamodb.Table("yazan-dev-detection_objects")
 
     def save_prediction(self, uid: str, original_image: str, predicted_image: str) -> None:
-        self.sessions_table.put_item(Item={
+        response = self.sessions_table.put_item(Item={
             "uid": uid,
             "timestamp": datetime.utcnow().isoformat(),
             "original_image": original_image,
             "predicted_image": predicted_image
         })
+        print("📥 DynamoDB put_item response:", response)
+        print("UID: ",uid)
 
     def save_detection(self, uid, label, score, bbox):
         print(f"🔸 Saving detection for uid={uid} | label={label}, score={score}, bbox={bbox}")
