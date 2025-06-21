@@ -23,23 +23,39 @@ class DynamoDBStorage(PredictionStorage):
         })
 
     def save_detection(self, uid, label, score, bbox):
-        self.objects_table.put_item(Item={
-            "id": uid,
+        print(f"🔸 Saving detection for uid={uid} | label={label}, score={score}, bbox={bbox}")
+
+        item = {
+            "id": str(uuid.uuid4()),  # unique ID for each detection
+            "prediction_uid": uid,  # this is required for querying
             "label": label,
             "score": Decimal(str(score)),
             "bbox": bbox
-        })
+        }
+
+        print(f"🟡 DynamoDB item to save: {item}")
+        self.objects_table.put_item(Item=item)
 
     def get_prediction(self, uid: str) -> Optional[Dict]:
+        print(f"🔍 Fetching prediction session with uid={uid}")
         response = self.sessions_table.get_item(Key={"uid": uid})
         session = response.get("Item")
         if not session:
+            print("❌ No session found.")
             return None
 
-        objects = self.objects_table.query(
-            IndexName="prediction_uid-index",
-            KeyConditionExpression=Key("prediction_uid").eq(uid)
-        )["Items"]
+        print("✅ Session found:", session)
+
+        try:
+            objects_response = self.objects_table.query(
+                IndexName="prediction_uid-index",
+                KeyConditionExpression=Key("prediction_uid").eq(uid)
+            )
+            objects = objects_response.get("Items", [])
+            print(f"🟢 Found {len(objects)} detection objects for uid={uid}")
+        except Exception as e:
+            print(f"❌ Failed to query detection objects: {e}")
+            objects = []
 
         session["detection_objects"] = objects
         return session
