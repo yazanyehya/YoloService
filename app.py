@@ -104,7 +104,9 @@ async def predict(request: Request, file: UploadFile = File(None)):
     return {
         "prediction_uid": uid,
         "detection_count": len(results[0].boxes),
-        "labels": detected_labels
+        "labels": detected_labels,
+        "detections": detections
+
     }
 
 @app.get("/prediction/{uid}")
