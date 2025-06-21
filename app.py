@@ -96,7 +96,6 @@ async def predict(request: Request, file: UploadFile = File(None)):
     upload_to_s3(predicted_path, f"predicted/{uid}{ext}")
 
     print("📣 Calling save_prediction with:", uid, original_path, predicted_path)
-
     storage.save_prediction(uid, original_path, predicted_path)
 
     detected_labels = []
@@ -196,10 +195,17 @@ def process_sqs_message(body):
         return
 
     results = model(local_path, device="cpu")
-    annotated = Image.fromarray(results[0].plot())
-    annotated.save(predicted_path)
-    s3_client.upload_file(predicted_path, S3_BUCKET, f"predicted/{filename}")
+    print("🖼️ Annotated image saved and uploaded")
 
+    annotated = Image.fromarray(results[0].plot())
+    print("🖼️ Annotated image saved and uploaded1")
+
+
+    annotated.save(predicted_path)
+    print("🖼️ Annotated image saved and uploaded2")
+
+    s3_client.upload_file(predicted_path, S3_BUCKET, f"predicted/{filename}")
+    print("📣 Calling save_prediction with:", prediction_id, local_path, predicted_path)
     storage.save_prediction(prediction_id, local_path, predicted_path)
 
     for box in results[0].boxes:
