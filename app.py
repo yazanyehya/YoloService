@@ -114,12 +114,23 @@ async def predict(request: Request, file: UploadFile = File(None)):
 
 
 
+
 @app.get("/prediction/{uid}")
 def get_prediction(uid: str):
     data = storage.get_prediction(uid)
     if not data:
         raise HTTPException(status_code=404, detail="Prediction not found")
-    return data
+
+    detection_objects = data.get("detection_objects", [])
+    labels = [d["label"] for d in detection_objects]
+    label_counts = dict(Counter(labels))
+
+    return {
+        "prediction_uid": uid,
+        "label_counts": label_counts,
+    }
+
+
 
 @app.get("/predictions/label/{label}")
 def get_by_label(label: str):
