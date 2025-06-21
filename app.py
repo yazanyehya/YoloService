@@ -178,6 +178,8 @@ def health():
 
 # --- Background SQS Consumer ---
 def process_sqs_message(body):
+    print(f"📨 Received SQS message: {body}")  # ← ADD THIS
+
     image_key = body["image_key"]
     chat_id = body["chat_id"]
     prediction_id = body["prediction_id"]
