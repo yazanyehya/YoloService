@@ -44,7 +44,7 @@ class DynamoDBStorage(PredictionStorage):
         response = self.sessions_table.get_item(Key={"uid": uid})
         print(f"Reponse :",response)
 
-        session = response.get("Items")
+        session = response.get("Item")
         print("Session:",session)
         if not session:
             print("❌ No session found.")
