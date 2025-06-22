@@ -216,7 +216,7 @@ def process_sqs_message(body):
         score = float(box.conf[0])
         bbox = box.xyxy[0].tolist()
         storage.save_detection(prediction_id, label, score, str(bbox))
-
+    storage.get_prediction(prediction_id)
     print(f"✅ Processed prediction {prediction_id}")
 
 
