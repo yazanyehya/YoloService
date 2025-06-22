@@ -37,6 +37,7 @@ S3_BUCKET = os.getenv("AWS_S3_BUCKET", "yazan-dev-images-polybot")
 SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
 s3_client = boto3.client("s3", region_name=AWS_REGION)
 sqs_client = boto3.client("sqs", region_name=AWS_REGION)
+POLYBOT_URL=os.getenv("POLYBOT_URL")
 
 # --- Storage Injection ---
 storage_type = os.getenv("STORAGE_TYPE", "sqlite")
@@ -223,7 +224,7 @@ def process_sqs_message(body):
         "uid": prediction_id
     }
     try:
-        res = requests.post(f"http://13.52.134.192:8443/predictions/{prediction_id}", json=payload)
+        res = requests.post(f"http://{POLYBOT_URL}:8443/predictions/{prediction_id}", json=payload)
         print(f"📡 Sent results to Polybot: {res.status_code}")
     except Exception as e:
         print(f"❌ Failed to send results to Polybot: {e}")
