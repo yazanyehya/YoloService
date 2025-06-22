@@ -36,7 +36,7 @@ jobs:
       AWS_S3_BUCKET_DEV: ${{ secrets.AWS_S3_BUCKET_DEV }}
       STORAGE_TYPE: ${{secrets.STORAGE_TYPE}}
       SQS_QUEUE_URL: ${{secrets.SQS_QUEUE_URL}}
-      SESSION_TABLE: ${{secrets.SESSION_TABLE_DEV}}
-      OBJECT_TABLE: ${{secrets.OBJECT_TABLE_DEV}}
-      POLYBOT_URL: ${{secrets.POLYBOT_URL_DEV}}
+      SESSION_TABLE_DEV: ${{secrets.SESSION_TABLE_DEV}}
+      OBJECT_TABLE_DEV: ${{secrets.OBJECT_TABLE_DEV}}
+      POLYBOT_URL_DEV: ${{secrets.POLYBOT_URL_DEV}}
 
