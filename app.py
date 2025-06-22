@@ -123,6 +123,7 @@ async def predict(request: Request, file: UploadFile = File(None)):
 
 @app.get("/prediction/{uid}")
 def get_prediction(uid: str):
+    print("get predection call")
     data = storage.get_prediction(uid)
     if not data:
         raise HTTPException(status_code=404, detail="Prediction not found")

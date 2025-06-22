@@ -42,7 +42,7 @@ class DynamoDBStorage(PredictionStorage):
     def get_prediction(self, uid: str) -> Optional[Dict]:
         print(f"🔍 Fetching prediction session with uid={uid}")
         response = self.sessions_table.get_item(Key={"uid": uid})
-        print(f"🔍 Getting item with uid: '{uid}' (type: {type(uid)})'")
+        print(f"Reponse :",response)
 
         session = response.get("Item")
         print("Session:",session)
