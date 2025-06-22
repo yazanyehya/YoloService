@@ -5,14 +5,16 @@ from datetime import datetime
 from boto3.dynamodb.conditions import Key
 from storage.base import PredictionStorage
 from decimal import Decimal
-
+import os
+SESSION_TABLE = os.getenv("SESSION_TABLE")
+OBJECT_TABLE = os.getenv("OBJECT_TABLE")
 
 
 class DynamoDBStorage(PredictionStorage):
     def __init__(self, region="us-west-1"):
         self.dynamodb = boto3.resource("dynamodb", region_name=region)
-        self.sessions_table = self.dynamodb.Table("yazan-dev-prediction_sessions")
-        self.objects_table = self.dynamodb.Table("yazan-dev-detection_objects")
+        self.sessions_table = self.dynamodb.Table(SESSION_TABLE)
+        self.objects_table = self.dynamodb.Table(OBJECT_TABLE)
 
     def save_prediction(self, uid: str, original_image: str, predicted_image: str) -> None:
         print(f"📤 Saving prediction uid={uid}")
