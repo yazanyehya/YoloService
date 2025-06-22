@@ -15,7 +15,7 @@ from PIL import Image
 import boto3
 import torch
 from ultralytics import YOLO
-
+import requests
 from storage.sqlite_storage import SQLiteStorage
 from storage.dynamodb_storage import DynamoDBStorage
 
@@ -97,6 +97,8 @@ async def predict(request: Request, file: UploadFile = File(None)):
 
     print("📣 Calling save_prediction with:", uid, original_path, predicted_path)
     storage.save_prediction(uid, original_path, predicted_path)
+
+
 
     detected_labels = []
     for box in results[0].boxes:
@@ -216,7 +218,15 @@ def process_sqs_message(body):
         score = float(box.conf[0])
         bbox = box.xyxy[0].tolist()
         storage.save_detection(prediction_id, label, score, str(bbox))
-    storage.get_prediction(prediction_id)
+    payload = {
+        "chat_id": chat_id,
+        "uid": prediction_id
+    }
+    try:
+        res = requests.post(f"http://13.52.134.192:8443/predictions/{prediction_id}", json=payload)
+        print(f"📡 Sent results to Polybot: {res.status_code}")
+    except Exception as e:
+        print(f"❌ Failed to send results to Polybot: {e}")
     print(f"✅ Processed prediction {prediction_id}")
 
 
